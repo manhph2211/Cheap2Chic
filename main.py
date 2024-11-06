@@ -10,7 +10,7 @@ from utils import preprocess
 from dataset import EqualizerDataset
 from models.demucs import DemucsEqualizer, DoubleDemucsEqualizer
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 NUM_WORKERS = 8
 SHUFFLE = True
 SAMPLE_RATE = 16000  
@@ -19,7 +19,7 @@ STRIDE_LENGTH = 0.5
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_TYPE = "demucs" # wav2vec
 FREEZE = False
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-4
 EPOCHS = 50
 STAGE = 2
 
