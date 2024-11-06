@@ -2,8 +2,12 @@
 
 data/EN*
 data/*.zip
+data/trash
 wandb/
+*.sh
+*.out
 assets/logs/*
+assets
 
 
 
