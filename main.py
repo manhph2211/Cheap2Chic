@@ -10,7 +10,7 @@ from utils import preprocess
 from dataset import EqualizerDataset
 from models.demucs import DemucsEqualizer, DoubleDemucsEqualizer
 
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 NUM_WORKERS = 8
 SHUFFLE = True
 SAMPLE_RATE = 16000  
@@ -19,7 +19,7 @@ STRIDE_LENGTH = 0.5
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_TYPE = "demucs" # wav2vec
 FREEZE = False
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 5e-4
 EPOCHS = 50
 STAGE = 2
 
@@ -27,7 +27,7 @@ STAGE = 2
 if __name__ == "__main__":
     (train_digital_waveforms, train_record_low_waveforms), \
     (val_digital_waveforms, val_record_low_waveforms), \
-    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE)
+    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
 
     train_dataset = EqualizerDataset(train_digital_waveforms, train_record_low_waveforms, return_dict=True)
     val_dataset = EqualizerDataset(val_digital_waveforms, val_record_low_waveforms, return_dict=True)
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         if STAGE == 1:
             model = TrainerModelWrapper(DemucsEqualizer(freeze=FREEZE))
         elif STAGE == 2:
-            model = TrainerModelWrapper(DoubleDemucsEqualizer("assets/model1/pytorch_model.bin"))
+            model = TrainerModelWrapper(DoubleDemucsEqualizer("assets/stage1/pytorch_model.bin"))
         else:
             raise "Not Implement!"
             
