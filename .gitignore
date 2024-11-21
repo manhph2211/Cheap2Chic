@@ -9,7 +9,7 @@ wandb/
 assets/logs/*
 assets
 
-
+pretrain*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

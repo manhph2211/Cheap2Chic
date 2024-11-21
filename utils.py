@@ -23,7 +23,7 @@ def preprocess(digital_path, record_low_path, segment_length, stride_length, tar
             record_low_waveforms = test_record_low_waveforms
 
         digital_file = os.path.join(digital_path, f"{i}.wav")
-        record_low_file = os.path.join(record_low_path, f"earphone_{i}.wav")#os.path.join(record_low_path, f"y{record_low_path[-1]}_{i}.wav")
+        record_low_file = os.path.join(record_low_path, f"{record_low_path.split('_')[-1]}_{i}.wav")#os.path.join(record_low_path, f"y{record_low_path[-1]}_{i}.wav")
 
         digital_data, _ = librosa.load(digital_file, sr=target_sampling_rate)
         record_low_data, _ = librosa.load(record_low_file, sr=target_sampling_rate)

@@ -4,22 +4,24 @@ from tqdm import tqdm
 import torch
 from transformers import Trainer, TrainingArguments
 import torch
-from models.wav2vec import Wav2VecEqualizer
+from models.wav2vec_equalizer import Wav2VecEqualizer
 from trainer import TrainerModelWrapper, compute_metrics
 from utils import preprocess
 from dataset import EqualizerDataset
-from models.demucs import DemucsEqualizer, DoubleDemucsEqualizer
+from models.demucs_equalizer import DemucsEqualizer, DoubleDemucsEqualizer
+# from models.soundstream_equalizer import STEqualizer, DoubleSTEqualizer
 
-BATCH_SIZE = 64
+
+BATCH_SIZE = 16
 NUM_WORKERS = 8
 SHUFFLE = True
-SAMPLE_RATE = 16000  
+SAMPLE_RATE = 44100  
 SEGMENT_LENGTH = 5
 STRIDE_LENGTH = 0.5
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_TYPE = "demucs" # wav2vec
 FREEZE = False
-LEARNING_RATE = 5e-4
+LEARNING_RATE = 5e-5
 EPOCHS = 50
 STAGE = 2
 
@@ -27,7 +29,7 @@ STAGE = 2
 if __name__ == "__main__":
     (train_digital_waveforms, train_record_low_waveforms), \
     (val_digital_waveforms, val_record_low_waveforms), \
-    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
+    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}_earphone", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
 
     train_dataset = EqualizerDataset(train_digital_waveforms, train_record_low_waveforms, return_dict=True)
     val_dataset = EqualizerDataset(val_digital_waveforms, val_record_low_waveforms, return_dict=True)
@@ -51,13 +53,15 @@ if __name__ == "__main__":
     )
     if MODEL_TYPE == "wav2vec":
         model = TrainerModelWrapper(Wav2VecEqualizer(freeze_encoder=FREEZE))
-    else:
+    elif MODEL_TYPE == "demucs":
         if STAGE == 1:
             model = TrainerModelWrapper(DemucsEqualizer(freeze=FREEZE))
         elif STAGE == 2:
-            model = TrainerModelWrapper(DoubleDemucsEqualizer("assets/stage1/pytorch_model.bin"))
+            model = TrainerModelWrapper(DoubleDemucsEqualizer("assets/checkpoint-5292/pytorch_model.bin"))
         else:
             raise "Not Implement!"
+    else:
+        raise "Not Implement!"
             
     trainer = Trainer(
         model=model,
