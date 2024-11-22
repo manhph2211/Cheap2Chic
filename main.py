@@ -29,7 +29,7 @@ STAGE = 2
 if __name__ == "__main__":
     (train_digital_waveforms, train_record_low_waveforms), \
     (val_digital_waveforms, val_record_low_waveforms), \
-    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}_earphone", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
+    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}_headphone", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
 
     train_dataset = EqualizerDataset(train_digital_waveforms, train_record_low_waveforms, return_dict=True)
     val_dataset = EqualizerDataset(val_digital_waveforms, val_record_low_waveforms, return_dict=True)
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         if STAGE == 1:
             model = TrainerModelWrapper(DemucsEqualizer(freeze=FREEZE))
         elif STAGE == 2:
-            model = TrainerModelWrapper(DoubleDemucsEqualizer("assets/checkpoint-5292/pytorch_model.bin"))
+            model = TrainerModelWrapper(DoubleDemucsEqualizer("assets/stage1-v4/pytorch_model.bin"))
         else:
             raise "Not Implement!"
     else:
