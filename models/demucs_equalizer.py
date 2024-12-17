@@ -1,13 +1,17 @@
 import torch
 import torchaudio
 import torch.nn as nn 
-from demucs import pretrained
-
+from models.core.htdemucs import HTDemucs
 
 class DemucsEqualizer(nn.Module):
     def __init__(self, freeze=False, model_name="htdemucs", device="cuda"):
         super().__init__()
-        self.model = pretrained.get_model(model_name).models[0].to(device)
+        pkg = torch.hub.load_state_dict_from_url(
+            "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/955717e8-8726e21a.th", map_location='cpu', check_hash=True) 
+        self.model = HTDemucs(**pkg["kwargs"])
+        self.model.load_state_dict(pkg["state"])
+        self.model = self.model.to(device)
+        # self.model = pretrained.get_model(model_name).models[0].to(device)
 
     def forward(self, x):
         if len(x.shape) == 2:
@@ -21,6 +25,7 @@ class DemucsEqualizer(nn.Module):
 class DoubleDemucsEqualizer(nn.Module):
     def __init__(self, checkpoint_path, model_name="htdemucs", device="cuda"):
         super().__init__()
+        
         self.model1 = DemucsEqualizer(model_name=model_name, device=device)
         try:
             state_dict = torch.load(checkpoint_path, map_location=device)
@@ -33,8 +38,12 @@ class DoubleDemucsEqualizer(nn.Module):
             
         for name, param in self.model1.named_parameters():
             param.requires_grad = False
-
-        self.model2 = pretrained.get_model(model_name).models[0].to(device)
+        
+        pkg = torch.hub.load_state_dict_from_url(
+            "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/955717e8-8726e21a.th", map_location='cpu', check_hash=True) 
+        self.model2 = HTDemucs(**pkg["kwargs"])
+        self.model2.load_state_dict(pkg["state"])
+        self.model2 = self.model2.to(device)
 
     def forward(self, x):
         if len(x.shape) == 2:

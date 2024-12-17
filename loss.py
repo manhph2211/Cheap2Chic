@@ -1,6 +1,37 @@
 
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
+
+
+class STFTLoss(nn.Module):
+    def __init__(self, n_fft=1024, hop_length=120, win_length=600):
+        super(STFTLoss, self).__init__()
+        self.n_fft = n_fft
+        self.hop_length = hop_length or n_fft // 4
+        self.win_length = win_length or n_fft
+        self.window = torch.hann_window(self.win_length)
+
+    def forward(self, target, pred):
+        target_stft = torch.stft(
+            target,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=self.window.to(target.device),
+            return_complex=True
+        )
+        pred_stft = torch.stft(
+            pred,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=self.window.to(pred.device),
+            return_complex=True
+        )
+        target_mag = torch.abs(target_stft)
+        pred_mag = torch.abs(pred_stft)
+        return F.l1_loss(pred_mag, target_mag)
 
 
 def stft(x, fft_size, hop_size, win_length, window):
@@ -58,12 +89,12 @@ class LogSTFTMagnitudeLoss(torch.nn.Module):
         return F.l1_loss(torch.log(y_mag), torch.log(x_mag))
 
 
-class STFTLoss(torch.nn.Module):
+class STFTLossV1(torch.nn.Module):
     """STFT loss module."""
 
     def __init__(self, fft_size=1024, shift_size=120, win_length=600, window="hann_window"):
         """Initialize STFT loss module."""
-        super(STFTLoss, self).__init__()
+        super(STFTLossV1, self).__init__()
         self.fft_size = fft_size
         self.shift_size = shift_size
         self.win_length = win_length

@@ -29,7 +29,7 @@ STAGE = 2
 if __name__ == "__main__":
     (train_digital_waveforms, train_record_low_waveforms), \
     (val_digital_waveforms, val_record_low_waveforms), \
-    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_y{STAGE}_headphone", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
+    (test_digital_waveforms, test_record_low_waveforms) = preprocess("data/EN_x", f"data/EN_x", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE) # f"data/EN_y{STAGE}"
 
     train_dataset = EqualizerDataset(train_digital_waveforms, train_record_low_waveforms, return_dict=True)
     val_dataset = EqualizerDataset(val_digital_waveforms, val_record_low_waveforms, return_dict=True)
