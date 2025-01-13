@@ -8,6 +8,7 @@ wandb/
 *.out
 assets/logs/*
 assets
+data/v*/*
 
 pretrain*
 

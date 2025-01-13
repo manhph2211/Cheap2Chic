@@ -13,8 +13,8 @@ def compute_metrics(pred):
     labels = labels.to('cpu')
     preds = preds.to('cpu')
     
-    stft = STFT_loss(labels, preds)
-    mse = ((preds - labels) ** 2).mean() + stft.item()
+    # stft = STFT_loss(labels, preds)
+    mse = ((preds - labels) ** 2).mean() #+ stft.item()
     return {"mse": mse.item()}
 
 
