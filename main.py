@@ -28,7 +28,7 @@ EPOCHS = 20
 STAGE = 2
 DATA_VERSION = 'v2'
 NUMS = 55
-MODE = 'TRAIN'
+MODE = 'TEST'
 
     
 if __name__ == "__main__":
