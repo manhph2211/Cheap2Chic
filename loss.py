@@ -5,11 +5,11 @@ import torch.nn as nn
 
 
 class STFTLoss(nn.Module):
-    def __init__(self, n_fft=1024, hop_length=120, win_length=600):
+    def __init__(self, n_fft=1024, hop_length=160, win_length=1024):
         super(STFTLoss, self).__init__()
         self.n_fft = n_fft
-        self.hop_length = hop_length or n_fft // 4
-        self.win_length = win_length or n_fft
+        self.hop_length = hop_length
+        self.win_length = win_length
         self.window = torch.hann_window(self.win_length)
 
     def forward(self, target, pred):
@@ -31,7 +31,7 @@ class STFTLoss(nn.Module):
         )
         target_mag = torch.abs(target_stft)
         pred_mag = torch.abs(pred_stft)
-        return F.l1_loss(pred_mag, target_mag)
+        return F.mse_loss(pred_mag, target_mag)
 
 
 def stft(x, fft_size, hop_size, win_length, window):

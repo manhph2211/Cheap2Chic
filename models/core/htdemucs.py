@@ -523,17 +523,10 @@ class HTDemucs(nn.Module):
                     f"training length {training_length}")
         return training_length
 
-    def forward(self, mix):
+    def forward(self, mix, s_film=None, e_film=None):
         length = mix.shape[-1]
         length_pre_pad = None
-        if self.use_train_segment:
-            if self.training:
-                self.segment = Fraction(mix.shape[-1], self.samplerate)
-            else:
-                training_length = int(self.segment * self.samplerate)
-                if mix.shape[-1] < training_length:
-                    length_pre_pad = mix.shape[-1]
-                    mix = F.pad(mix, (0, training_length - length_pre_pad))
+        
         z = self._spec(mix)
         mag = self._magnitude(z).to(mix.device)
         x = mag
@@ -544,6 +537,10 @@ class HTDemucs(nn.Module):
         mean = x.mean(dim=(1, 2, 3), keepdim=True)
         std = x.std(dim=(1, 2, 3), keepdim=True)
         x = (x - mean) / (1e-5 + std)
+        
+        if s_film is not None:
+            x = x * s_film[0] + s_film[1]
+        
         # x will be the freq. branch input.
 
         # Prepare the time branch input.
@@ -624,34 +621,13 @@ class HTDemucs(nn.Module):
         x = x.view(B, S, -1, Fq, T)
         x = x * std[:, None] + mean[:, None]
 
-        # to cpu as mps doesnt support complex numbers
-        # demucs issue #435 ##432
-        # NOTE: in this case z already is on cpu
-        # TODO: remove this when mps supports complex numbers
-        x_is_mps = x.device.type == "mps"
-        if x_is_mps:
-            x = x.cpu()
-
         zout = self._mask(z, x)
-        if self.use_train_segment:
-            if self.training:
-                x = self._ispec(zout, length)
-            else:
-                x = self._ispec(zout, training_length)
-        else:
-            x = self._ispec(zout, length)
+        if e_film is not None:
+            zout = zout * e_film[0].unsqueeze(-1)  + e_film[1].unsqueeze(-1) 
 
-        # back to mps device
-        if x_is_mps:
-            x = x.to("mps")
+        x = self._ispec(zout, length)
 
-        if self.use_train_segment:
-            if self.training:
-                xt = xt.view(B, S, -1, length)
-            else:
-                xt = xt.view(B, S, -1, training_length)
-        else:
-            xt = xt.view(B, S, -1, length)
+        xt = xt.view(B, S, -1, length)
         xt = xt * stdt[:, None] + meant[:, None]
         x = xt + x
         if length_pre_pad:
