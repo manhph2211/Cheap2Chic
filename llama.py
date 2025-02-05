@@ -6,9 +6,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 import random
 from tqdm import tqdm
+import json
 
-device_nums = 2
-emb_nums_each_device = 500
+def read_json(file_path):
+    with open(file_path, "r") as f:
+        return json.load(f)
+
+converter = read_json("assets/converter.json")
+print(converter)
+
+device_nums = 6
+emb_nums_each_device = 3
 
 model_id = "meta-llama/Llama-3.2-11B-Vision-Instruct"
 
@@ -21,8 +29,9 @@ text_model = MllamaTextModel.from_pretrained(model_id)
 processor = AutoProcessor.from_pretrained(model_id)
 
 def process_device(i):
+    device = converter[f"y{i}"]
     # input_prompt = f"Write a very short paragraph about the frequency responses of device {i}, e.g. report peak or trough values and trends in low (0-250Hz), mid (250-4000Hz), high (4000-12000Hz) and ultra-High (12000-20000Hz) frequency range (no recommendations, no suggestions, no steps, no thinking, no applications)."
-    input_prompt = f"Write a single short paragraph about unique key observations in the frequency responses of device {i}."
+    input_prompt = f"Write a single short paragraph about unique key observations in the frequency responses of {device} device."
     messages = [
         {"role": "user", "content": [
             {"type": "image"},
@@ -40,7 +49,7 @@ def process_device(i):
         print(out_text.replace(input_prompt, "").replace("assistant", "").replace("user", "").strip())
         text_inputs = processor(text=out_text.replace(input_prompt, "").replace("assistant", "").replace("user", "").strip(), return_tensors="pt")
         text_output = text_model(**text_inputs) # print(output.last_hidden_state.shape)
-        torch.save(text_output.last_hidden_state.mean(dim=1), f"assets/embeddings/y{i}/y{i}_{j}.pt")
+        torch.save(text_output.last_hidden_state.mean(dim=1), f"assets/y{i}_{j}.pt")
 
 for i in range(1, device_nums + 1):
     process_device(i)

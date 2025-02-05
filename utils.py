@@ -206,7 +206,7 @@ def wav_to_fbank(filename, target_length=1024, fn_STFT=None):
     return fbank, log_magnitudes_stft, waveform
 
 
-def preprocess(digital_path, record_low_path, segment_length=5, stride_length=0.5, target_sampling_rate=44100, total_files=60):
+def preprocess(digital_path, record_low_path, segment_length=5, stride_length=0.5, target_sampling_rate=44100, total_files=60, mono=False):
     test_files = 5
     train_val_files = total_files - test_files
 
@@ -231,14 +231,14 @@ def preprocess(digital_path, record_low_path, segment_length=5, stride_length=0.
         record_low_file = os.path.join(record_low_path, f"{i}.wav")
 
         digital_data, _ = librosa.load(digital_file, sr=target_sampling_rate)
-        record_low_data, _ = librosa.load(record_low_file, sr=target_sampling_rate)
+        record_low_data, _ = librosa.load(record_low_file, sr=target_sampling_rate, mono=mono)
 
         segment_samples = int(segment_length * target_sampling_rate)
         stride_samples = int(stride_length * target_sampling_rate)
 
         for start in range(0, len(digital_data) - segment_samples + 1, stride_samples):
             digital_segment = digital_data[start:start + segment_samples]
-            record_low_segment = record_low_data[start:start + segment_samples]
+            record_low_segment = record_low_data[:, start:start + segment_samples]
 
             digital_waveforms.append(digital_segment)
             record_low_waveforms.append(record_low_segment)

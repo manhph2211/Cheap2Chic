@@ -1,14 +1,14 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+import random
 
 class EqualizerDataset(Dataset):
-    def __init__(self, digital_waveforms, record_low_waveforms, speakers=None, return_dict=False):
-        assert len(digital_waveforms) == len(record_low_waveforms), \
+    def __init__(self, digital_waveforms, record_target_waveforms, speakers=None, return_dict=False):
+        assert len(digital_waveforms) == len(record_target_waveforms), \
             "Input and output waveforms lists must be of the same length"
 
         self.digital_waveforms = digital_waveforms
-        self.record_low_waveforms = record_low_waveforms
+        self.record_target_waveforms = record_target_waveforms
         self.speaker_list = speakers
         self.return_dict = return_dict
 
@@ -16,16 +16,17 @@ class EqualizerDataset(Dataset):
         return len(self.digital_waveforms)
 
     def __getitem__(self, idx):
-        speaker = self.speaker_list[idx]
         digital_sample = torch.tensor(self.digital_waveforms[idx], dtype=torch.float32)
-        record_low_sample = torch.tensor(self.record_low_waveforms[idx], dtype=torch.float32)
-        try:
-            text_emb = torch.load(f"{speaker}.pt")[0].cpu().mean(0)
-        except:
+        record_target_sample = torch.tensor(self.record_target_waveforms[idx], dtype=torch.float32)
+        if self.speaker_list is not None and len(self.speaker_list) > 0:
+            speaker = self.speaker_list[idx]
+            em_idx = random.randint(1, 80)
+            text_emb = torch.load(f"assets/embeddings/{speaker}/{speaker}_{em_idx}.pt")[0].cpu()
+        else:
             text_emb = None
 
         if self.return_dict:
-            return {'input_values': digital_sample, 'labels': record_low_sample, "text_emb": text_emb}
+            return {'input_values': digital_sample, 'labels': record_target_sample, "text_emb": text_emb}
 
-        return digital_sample, record_low_sample, text_emb
+        return digital_sample, record_target_sample, text_emb
     

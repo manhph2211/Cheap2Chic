@@ -44,7 +44,7 @@ class StyleTransform1(nn.Module):
     def forward(self, x, text_emd=None):
         if len(x.shape) == 2:
             x = x.unsqueeze(1)
-        x = torch.cat([x, x], dim=1)
+            x = torch.cat([x, x], dim=1)
         x = self.model1(x) 
         x = self.pool(text_emd).expand_as(x) * x
         x = x.mean(dim=1)[:,0,:]  
@@ -66,10 +66,10 @@ class StyleTransform2(nn.Module):
     def forward(self, x, text_emd=None):
         if len(x.shape) == 2:
             x = x.unsqueeze(1)
-        x = torch.cat([x, x], dim=1)
+            x = torch.cat([x, x], dim=1)
         x = self.model1(x, self.s_film(text_emd), self.e_film(text_emd)) 
-        x = x.mean(dim=1)[:,0,:]  
-        return x.reshape(x.shape[0], -1)
+        x = x.mean(dim=1)#[:,0,:]  
+        return x.reshape(x.shape[0], 2, -1) # stereo
     
     
 class DemucsEqualizer(nn.Module):
@@ -84,7 +84,7 @@ class DemucsEqualizer(nn.Module):
     def forward(self, x):
         if len(x.shape) == 2:
             x = x.unsqueeze(1)
-        x = torch.cat([x, x], dim=1)
+            x = torch.cat([x, x], dim=1)
         x = self.model1(x) 
         x = x.mean(dim=1)[:,0,:]  
         return x.reshape(x.shape[0], -1)
