@@ -47,8 +47,8 @@ class StyleTransform1(nn.Module):
             x = torch.cat([x, x], dim=1)
         x = self.model1(x) 
         x = self.pool(text_emd).expand_as(x) * x
-        x = x.mean(dim=1)[:,0,:]  
-        return x.reshape(x.shape[0], -1)
+        x = x.mean(dim=1)#[:,0,:]  
+        return x.reshape(x.shape[0], 2, -1)
     
 class StyleTransform2(nn.Module):
     ''' FILM
@@ -86,8 +86,8 @@ class DemucsEqualizer(nn.Module):
             x = x.unsqueeze(1)
             x = torch.cat([x, x], dim=1)
         x = self.model1(x) 
-        x = x.mean(dim=1)[:,0,:]  
-        return x.reshape(x.shape[0], -1)
+        x = x.mean(dim=1)#[:,0,:]  
+        return x.reshape(x.shape[0], 2, -1)
 
 
 class DoubleDemucsEqualizer(nn.Module):
