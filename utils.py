@@ -13,6 +13,10 @@ import librosa.util as librosa_util
 from scipy.signal import get_window
 
 
+def peak_normalize(audio):
+    return (audio - np.min(audio, axis=-1, keepdims=True)) / (np.max(audio, axis=-1, keepdims=True) - np.min(audio, axis=-1, keepdims=True) + 1e-8)
+
+
 def window_sumsquare(
     window,
     n_frames,
