@@ -1,7 +1,61 @@
 import torch
-import torchaudio
 import torch.nn as nn 
 from models.core.htdemucs import HTDemucs
+import torch
+from tqdm import tqdm
+import random
+
+
+def gen(input_waveforms, target_waveforms, checkpoint_path='', gpu='cuda', batch_size=32, speaker='y1'):
+    print("############ START GENERATING DATA ###########")
+
+    model = StyleTransform2()
+    state_dict = torch.load(checkpoint_path, map_location=gpu)
+    state_dict = {k[6:]: v for k, v in state_dict.items()}
+    model.load_state_dict(state_dict)
+    model.eval()
+    model.to(gpu)
+
+    gen_waveforms = []
+    num_samples = len(input_waveforms)
+
+    gen_waveforms.extend(target_waveforms[:2125])    
+    for i in tqdm(range(2125, num_samples, batch_size)):
+        em_idxes =  [random.randint(1, 30) for _ in range(batch_size)]
+        text_emb = [torch.load(f"assets/embeddings/{speaker}/{speaker}_{em_idx}.pt", weights_only=True)[0].cpu() for em_idx in em_idxes]
+        batch = torch.tensor(input_waveforms[i:i + batch_size]).to(gpu)
+        em_batch = torch.tensor(text_emb).to(gpu)
+        with torch.no_grad():
+            output = model(batch, em_batch).squeeze(1).cpu().numpy()
+        gen_waveforms.extend(output)
+
+    return gen_waveforms
+
+# def gen(input_waveforms, target_waveforms, checkpoint_path='', gpu='cuda', batch_size=32):
+#     print("############ START GENERATING DATA ###########")
+
+#     model = DemucsEqualizer(device=gpu)
+#     state_dict = torch.load(checkpoint_path, map_location=gpu)
+#     state_dict = {k[6:]: v for k, v in state_dict.items()}
+#     model.load_state_dict(state_dict)
+#     model.eval()
+#     model.to(gpu)
+
+#     gen_waveforms = []
+#     num_samples = len(input_waveforms)
+
+#     # First 2127 samples: Directly append target waveforms
+#     gen_waveforms.extend(target_waveforms[:2125])
+
+#     # Process remaining samples in batches
+#     for i in tqdm(range(2125, num_samples, batch_size)):
+#         batch = torch.tensor(input_waveforms[i:i + batch_size]).to(gpu)
+#         with torch.no_grad():
+#             output = model(batch).squeeze(1).cpu().numpy()
+#         gen_waveforms.extend(output)
+
+#     return gen_waveforms
+
 
 class Pooler(nn.Module):
     def __init__(self, hidden_size=4):
@@ -53,7 +107,7 @@ class StyleTransform1(nn.Module):
 class StyleTransform2(nn.Module):
     ''' FILM
     '''
-    def __init__(self, freeze=False, model_name="htdemucs", device="cuda"):
+    def __init__(self, device="cuda"):
         super().__init__()
         pkg = torch.hub.load_state_dict_from_url(
             "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/955717e8-8726e21a.th", map_location='cpu', check_hash=True) 
@@ -67,7 +121,7 @@ class StyleTransform2(nn.Module):
         if len(x.shape) == 2:
             x = x.unsqueeze(1)
             x = torch.cat([x, x], dim=1)
-        if text_emd is None:
+        if text_emd is None or not isinstance(text_emd, torch.Tensor) or text_emd.nelement() == 0:
             x = self.model1(x)
         else:
             x = self.model1(x, self.s_film(text_emd), self.e_film(text_emd)) 
@@ -76,7 +130,7 @@ class StyleTransform2(nn.Module):
     
     
 class DemucsEqualizer(nn.Module):
-    def __init__(self, freeze=False, model_name="htdemucs", device="cuda"):
+    def __init__(self, device="cuda"):
         super().__init__()
         pkg = torch.hub.load_state_dict_from_url(
             "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/955717e8-8726e21a.th", map_location='cpu', check_hash=True) 
@@ -94,10 +148,10 @@ class DemucsEqualizer(nn.Module):
 
 
 class DoubleDemucsEqualizer(nn.Module):
-    def __init__(self, checkpoint_path, model_name="htdemucs", device="cuda"):
+    def __init__(self, checkpoint_path, model_name="v1", device="cuda"):
         super().__init__()
-        
-        self.model1 = DemucsEqualizer(model_name=model_name, device=device)
+        self.model_name = model_name
+        self.model1 = DemucsEqualizer(device=device) if model_name=='v1' else StyleTransform2(device=device)
         try:
             state_dict = torch.load(checkpoint_path, map_location=device)
             state_dict = {k[6:]: v for k, v in state_dict.items()}
@@ -116,14 +170,13 @@ class DoubleDemucsEqualizer(nn.Module):
         self.model2.load_state_dict(pkg["state"])
         self.model2 = self.model2.to(device)
 
-    def forward(self, x):
+    def forward(self, x, text_emd=None):
         if len(x.shape) == 2:
             x = x.unsqueeze(1)
-        x = torch.cat([x, x], dim=1)        
+            x = torch.cat([x, x], dim=1)        
         x = self.model2(x)
         x = x.mean(dim=1)[:,0,:]  
         x = x.reshape(x.shape[0], -1)
-        x = self.model1(x)
+        x = self.model1(x) if self.model_name=="v1" else self.model1(x, text_emd)
         return x
-    
     

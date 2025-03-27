@@ -15,7 +15,7 @@ def read_json(file_path):
 converter = read_json("assets/converter.json")
 print(converter)
 
-device_nums = 6
+device_nums = 10
 emb_nums_each_device = 100
 
 model_id = "meta-llama/Llama-3.2-11B-Vision-Instruct"
@@ -38,7 +38,7 @@ def process_device(i):
             {"type": "text", "text": input_prompt}
         ]}
     ]
-    image = Image.open(f"assets/no_harman/y{i}/y{i}.jpg").convert("RGB")
+    image = Image.open(f"assets/embeddings/y{i}/y{i}.jpg").convert("RGB")
     input_text = processor.apply_chat_template(messages) #add_generation_prompt=True
     inputs = processor(image, input_text, return_tensors="pt").to(model.device)
     print(f"\n####################### PROCESSING DEVICE {i} ########################")
@@ -49,9 +49,9 @@ def process_device(i):
         print(out_text.replace(input_prompt, "").replace("assistant", "").replace("user", "").strip())
         text_inputs = processor(text=out_text.replace(input_prompt, "").replace("assistant", "").replace("user", "").strip(), return_tensors="pt")
         text_output = text_model(**text_inputs) # print(output.last_hidden_state.shape)
-        torch.save(text_output.last_hidden_state.mean(dim=1), f"assets/no_harman/y{i}/y{i}_{j}.pt")
+        torch.save(text_output.last_hidden_state.mean(dim=1), f"assets/embeddings/y{i}/y{i}_{j}.pt")
 
-for i in range(1, device_nums + 1):
+for i in range(9, device_nums + 1):
     process_device(i)
 
 # with ThreadPoolExecutor(max_workers=device_nums) as executor:

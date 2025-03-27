@@ -28,10 +28,10 @@ class EqualizerDataset(Dataset):
                 text_emb = torch.load(f"assets/embeddings/{speaker}/{speaker}_{em_idx}.pt", weights_only=True)[0].cpu()
             else:
                 text_emb = torch.load(f"assets/embeddings/{speaker}/{speaker}_1.pt", weights_only=True)[0].cpu()
-
         else:
             text_emb = None
-            return digital_sample, record_target_sample, record_target_sample
+            if self.mode == "TEST":
+                return digital_sample, record_target_sample, record_target_sample 
 
         if self.return_dict:
             return {'input_values': digital_sample, 'labels': record_target_sample, "text_emb": text_emb}

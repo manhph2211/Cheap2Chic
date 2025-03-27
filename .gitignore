@@ -11,6 +11,7 @@ assets
 data/v*/*
 *.txt
 pretrain*
+*.npy
 trash/
 
 # Byte-compiled / optimized / DLL files

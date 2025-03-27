@@ -8,18 +8,19 @@ from models.wav2vec_equalizer import Wav2VecEqualizer
 from trainer import TrainerModelWrapper, compute_metrics
 from utils import preprocess, peak_normalize
 from dataset import EqualizerDataset
-from models.demucs_equalizer import DemucsEqualizer, DoubleDemucsEqualizer, StyleTransform1, StyleTransform2
+from models.demucs_equalizer import DemucsEqualizer, DoubleDemucsEqualizer, StyleTransform1, StyleTransform2, gen
 from torch.utils.data import DataLoader
 import numpy as np 
 from metrics import Metric
 from torch.utils.data import Subset
 from torch.utils.data import random_split
+import math
+from datetime import datetime
 
-
-BATCH_SIZE = 8 # A100 stage 1 bs=8
+BATCH_SIZE = 8 # 2 A100 stage 1 bs=8 
 NUM_WORKERS = 8
 SHUFFLE = True
-SAMPLE_RATE = 44100  
+SAMPLE_RATE = 44100
 MONO = False
 SEGMENT_LENGTH = 5
 STRIDE_LENGTH = 0.5
@@ -27,23 +28,31 @@ GPU = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_TYPE = "demucs" 
 FREEZE = False
 
-LEARNING_RATE = 5e-5
-EPOCHS = 15
-STAGE = 1
-DATA_VERSION = 'v3'
-NUMS = 20
-N = 6
+LEARNING_RATE = 5e-5 
+EPOCHS = 15 
+DATA_VERSION = 'v5' 
+TEST_FILES = 5 
 
-MODE = 'TEST'
-DEVICES = "ALL"
-EM_POOL = True
-VLM_FILM = True
-TRAIN_WITHOUT_Y = '' 
-TUNE_ONLY_Y = ''
+STAGE = 1 ######## ********** ########
+NUMS = 20 ######## ********** ########
+
+N = 10 ######## ********** ######## 
+MODEL_VERSION = 'v2' ######## ********** ######## 
+
+MODE = 'TRAIN'  ######## ********** ######## 
+DEVICES = "ALL" ######## ********** ########
+
+EM_POOL = True ######## ********** ########
+VLM_FILM = True ######## ********** ########
+
+TRAIN_WITHOUT_Y = ['y3'] ######## ********** ########
+TUNE_ONLY_Y = 'y3' ######## ********** ########
+
+TUNE_RATIO = 0.05 ######## ********** ########
+GEN = False ######## ********** ########
+
 FREEZE_DEMUC = False
 POOL = 30
-TUNE_RATIO = 0.1
-
 
 config = {
     "BATCH_SIZE": BATCH_SIZE,
@@ -78,9 +87,9 @@ print("****************************** CONFIGURATIONS ***************************
 for key, value in config.items():
     print(f"{key}: {value}")
 
+print("Current date and time:", datetime.now())
 
 print("****************************** STARTING EXPERIMENT ******************************")
-
 
     
 if __name__ == "__main__":
@@ -95,24 +104,27 @@ if __name__ == "__main__":
         if DEVICES != "ALL":
             (train_digital_low_waveforms, train_record_low_waveforms), \
             (val_digital_low_waveforms, val_record_low_waveforms), \
-            (test_digital_low_waveforms, test_record_low_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/{DEVICES}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO) # f"data/EN_y{STAGE}"
+            (test_digital_low_waveforms, test_record_low_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/{DEVICES[0]}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO, TEST_FILES) # f"data/EN_y{STAGE}"
 
             # NOTE this is for Stage 2
             (train_digital_high_waveforms, train_record_high_waveforms), \
             (val_digital_high_waveforms, val_record_high_waveforms), \
-            (test_digital_high_waveforms, test_record_high_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/{DEVICES}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO) # f"data/EN_y{STAGE}"
+            (test_digital_high_waveforms, test_record_high_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/{DEVICES[1]}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO, TEST_FILES) # f"data/EN_y{STAGE}"
 
             (train_digital_waveforms, val_digital_waveforms, test_digital_waveforms)  = (train_digital_low_waveforms, val_digital_low_waveforms, test_digital_low_waveforms) if STAGE == 1 else (train_digital_high_waveforms, val_digital_high_waveforms, test_digital_high_waveforms)
             (train_record_waveforms, val_record_waveforms, test_record_waveforms)  = (train_record_low_waveforms, val_record_low_waveforms, test_record_low_waveforms) if STAGE == 1 else (train_record_high_waveforms, val_record_high_waveforms, test_record_high_waveforms)
+            if STAGE == 2:
+                train_speakers += [DEVICES[0]] * len(train_digital_waveforms) 
+                val_speakers += [DEVICES[0]] * len(val_digital_waveforms) 
 
         else:
             for i in range(1, 1+N):
-                if TRAIN_WITHOUT_Y == f"y{i}":
+                if f"y{i}" in TRAIN_WITHOUT_Y:
                     print(f"IGNORING DEVICE {i} !!!")
                     continue 
                 (train_digital_low_waveforms, train_record_low_waveforms), \
                 (val_digital_low_waveforms, val_record_low_waveforms), \
-                (test_digital_low_waveforms, test_record_low_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/y{i}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO) # f"data/EN_y{STAGE}"
+                (test_digital_low_waveforms, test_record_low_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/y{i}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO, TEST_FILES) # f"data/EN_y{STAGE}"
 
                 train_digital_waveforms += train_digital_low_waveforms 
                 val_digital_waveforms += val_digital_low_waveforms 
@@ -137,12 +149,14 @@ if __name__ == "__main__":
         if not VLM_FILM:
             print("NOT USING ANY CONDITIONS !!!")
             train_speakers, val_speakers = None, None
-            
+
         train_dataset = EqualizerDataset(train_digital_waveforms, train_record_waveforms, train_speakers, return_dict=True, embedding_pool=EM_POOL, pool_size=POOL)
         val_dataset = EqualizerDataset(val_digital_waveforms, val_record_waveforms, val_speakers, return_dict=True, embedding_pool=EM_POOL, pool_size=POOL)
         
+        save_path = f"assets/{DATA_VERSION}/{str(NUMS)}_stage{STAGE}_{DEVICES}_{EM_POOL}_{VLM_FILM}_{TRAIN_WITHOUT_Y}_{POOL}_{TUNE_ONLY_Y}_FULL_DATA_"
+        print(save_path)
         training_args = TrainingArguments(
-            output_dir=f"assets/{DATA_VERSION}/{str(NUMS)}_stage{STAGE}_{DEVICES}_{EM_POOL}_{VLM_FILM}_{TRAIN_WITHOUT_Y}_{POOL}_{TUNE_ONLY_Y}",
+            output_dir=save_path,
             eval_strategy="epoch",
             learning_rate=LEARNING_RATE,
             save_strategy='epoch',
@@ -156,36 +170,36 @@ if __name__ == "__main__":
             load_best_model_at_end=True,
             save_total_limit=2,
             save_safetensors=False,
-            eval_accumulation_steps=1,
-
         )
         if DEVICES != "ALL":
 
             if MODEL_TYPE == "wav2vec":
-                model = TrainerModelWrapper(Wav2VecEqualizer(freeze_encoder=FREEZE))
+                model = TrainerModelWrapper(Wav2VecEqualizer())
             elif MODEL_TYPE == "demucs":
                 if STAGE == 1:
-                    model = TrainerModelWrapper(DemucsEqualizer(freeze=FREEZE))
+                    init_model = DemucsEqualizer()
+                    model = TrainerModelWrapper(init_model, version=MODEL_VERSION)
                 elif STAGE == 2:
-                    model = TrainerModelWrapper(DoubleDemucsEqualizer(f"assets/{DATA_VERSION}/{str(NUMS)}_stage1/pytorch_model.bin"))
+                    model = TrainerModelWrapper(DoubleDemucsEqualizer("", model_name=MODEL_VERSION), version=MODEL_VERSION)
                 else:
                     raise "Not Implement!"
             else:
                 raise "Not Implement!"
         else:
-            model = TrainerModelWrapper(StyleTransform2(freeze=FREEZE))
+            model = TrainerModelWrapper(StyleTransform2(), version=MODEL_VERSION)
         
         trainer = Trainer(
             model=model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=val_dataset,
-            compute_metrics=compute_metrics
+            # compute_metrics=compute_metrics
         )
 
-        trainer.train() #resume_from_checkpoint="assets/v3/20_stage1_ALL_True_True__30__no_harman/checkpoint-5320"
+        trainer.train(resume_from_checkpoint="assets/v5/20_stage1_ALL_True_True_['y3']_30_y3_FULL_DATA_/checkpoint-3990")
+        
     elif MODE=='TEST':
-        all_devices = ['y1', 'y2', 'y3', 'y4', 'y5', 'y6'] #if len(TRAIN_WITHOUT_Y) == 0 else [TRAIN_WITHOUT_Y]
+        all_devices = ['y3', 'y1', 'y2', 'y4', 'y5', 'y6', 'y7'] #if len(TRAIN_WITHOUT_Y) == 0 else [TRAIN_WITHOUT_Y]
         for DEVICES in all_devices:
             print(f"Evaluating {DEVICES} ...")
             metric_tools = Metric()
@@ -205,13 +219,13 @@ if __name__ == "__main__":
             test_speakers = [DEVICES] * len(test_record_low_waveforms) if VLM_FILM else []
             test_dataset = EqualizerDataset(test_digital_waveforms, test_record_waveforms, test_speakers, return_dict=False, embedding_pool=EM_POOL, mode=MODE)
 
-            checkpoint_path = f"assets/v3/20_stage1_ALL_True_True__30_TUNE_{DEVICES}_0.05/pytorch_model.bin"
+            checkpoint_path = "assets/v5/30_stage1_ALL_True_True_y3_30_y3_retrain_GEN_False/checkpoint-17736/pytorch_model.bin" #f"assets/v3/20_stage1_ALL_True_True__30_TUNE_{DEVICES}_0.05/pytorch_model.bin"
             print(checkpoint_path, EM_POOL, DEVICES)
             if STAGE == 2:
                 model = DoubleDemucsEqualizer(f"assets/{DATA_VERSION}/{str(NUMS)}_stage1/pytorch_model.bin", device=DEVICES)
             else:
                 model = StyleTransform2()
-                
+        
             state_dict = torch.load(checkpoint_path, map_location=GPU)
             state_dict = {k[6:]: v for k, v in state_dict.items()}
             model.load_state_dict(state_dict)
@@ -243,9 +257,6 @@ if __name__ == "__main__":
 
                     pred_audio = predictions.cpu().numpy()
                     gt_audio = labels.cpu().numpy()
-                    # if len(all_devices) == 1:
-                    #     gt_audio = peak_normalize(gt_audio)
-                    #     pred_audio = peak_normalize(pred_audio)
                     batch_metrics = metric_tools.compute_all_metrics(gt_audio, pred_audio)
 
                     for key in all_metrics.keys():
@@ -257,53 +268,68 @@ if __name__ == "__main__":
             for key, value in final_metrics.items():
                 print(f"  - {key}: {value:.4f}")
     else:
-        for TUNE_ONLY_Y in tqdm(['y1', 'y2', 'y3', 'y4', 'y5','y6']):
+        for TUNE_ONLY_Y in tqdm(['y3']):#tqdm(['y1', 'y2', 'y3', 'y4', 'y5','y6']):
             print(f"########## TUNING {TUNE_ONLY_Y} ##########")
             train_speakers, val_speakers, test_speakers = [], [], []
             train_digital_waveforms, val_digital_waveforms, test_digital_waveforms = [], [], []
             train_record_waveforms, val_record_waveforms, test_record_waveforms = [], [], []
-
+            
             for i in range(1, 1+N):
                 (train_digital_low_waveforms, train_record_low_waveforms), \
                 (val_digital_low_waveforms, val_record_low_waveforms), \
                 (test_digital_low_waveforms, test_record_low_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/y{i}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO) # f"data/EN_y{STAGE}"
-
-                train_digital_waveforms += train_digital_low_waveforms 
-                val_digital_waveforms += val_digital_low_waveforms 
-                test_digital_waveforms += test_digital_low_waveforms 
-
-                train_record_waveforms += train_record_low_waveforms 
-                val_record_waveforms += val_record_low_waveforms 
-                test_record_waveforms += test_record_low_waveforms
+                # TEST_FILES+math.ceil(TUNE_RATIO*(NUMS-TEST_FILES))
                 
-                train_speakers += [f"y{i}"] * len(train_digital_low_waveforms) 
-                val_speakers += [f"y{i}"] * len(val_digital_low_waveforms) 
-                test_speakers += [f"y{i}"] * len(test_digital_low_waveforms) 
-                    
+                train_selected_nums = int(TUNE_RATIO*len(train_digital_low_waveforms))
+                val_selected_nums = int(TUNE_RATIO*len(val_digital_low_waveforms))
+
+                if GEN and f'y{i}'==TUNE_ONLY_Y:
+                    print(f"######### Before augmentation: training data size: {train_selected_nums}, each shaped: {train_record_low_waveforms[0].shape} #########")
+                    add_train_record_waveforms = gen(train_digital_low_waveforms[:train_selected_nums*3], train_record_low_waveforms[:train_selected_nums*3], checkpoint_path="assets/v5/20_stage1_ALL_True_True_y3_30_TUNE_y3_0.05_after_gen/checkpoint-2070/pytorch_model.bin", speaker=TUNE_ONLY_Y)
+                    print(f"######### After augmentation: training data size: {len(add_train_record_waveforms)}, each shaped: {train_record_low_waveforms[0].shape} #########")
+                    # val_record_waveforms = gen(val_digital_waveforms)
+                    np.save(f"train_record_waveforms_y{i}.npy", add_train_record_waveforms)
+                    add_train_digital_waveforms = train_digital_low_waveforms[:train_selected_nums*3]
+                else:
+                    add_train_digital_waveforms = train_digital_low_waveforms[:train_selected_nums] 
+                    add_train_record_waveforms = train_record_low_waveforms[:train_selected_nums]
+                
+                add_val_digital_waveforms = val_digital_low_waveforms[:val_selected_nums]
+                add_val_record_waveforms = val_record_low_waveforms[:val_selected_nums]
+            
+                train_digital_waveforms += add_train_digital_waveforms
+                val_digital_waveforms += add_val_digital_waveforms
+
+                train_record_waveforms += add_train_record_waveforms
+                val_record_waveforms += add_val_record_waveforms
+                
+                train_speakers += [f"y{i}"] * len(add_train_digital_waveforms) #len(train_digital_low_waveforms) 
+                val_speakers += [f"y{i}"] * len(add_val_digital_waveforms) #len(val_digital_low_waveforms) 
+
             print("USING TEXT CONDITIONED MODEL !!!")
             print(f"Train dataset size: {len(train_digital_waveforms)}")
             print(f"Validation dataset size: {len(val_digital_waveforms)}")
             print(f"Test dataset size: {len(test_digital_waveforms)}")
+            
             assert len(test_digital_waveforms) == len(test_speakers) == len(test_record_waveforms)
             
             print(len(train_digital_waveforms), len(val_digital_waveforms), len(test_digital_waveforms))
-        
+
         
             train_dataset = EqualizerDataset(train_digital_waveforms, train_record_waveforms, train_speakers, return_dict=True, embedding_pool=EM_POOL, pool_size=POOL)
-            num_samples = len(train_dataset)
-            num_select = max(1, int(TUNE_RATIO * num_samples))
-            train_subset, _ = random_split(train_dataset, [num_select, num_samples - num_select])
+            # num_samples = len(train_dataset)
+            # num_select = max(1, int(TUNE_RATIO * num_samples))
+            # train_subset, _ = random_split(train_dataset, [num_select, num_samples - num_select])
 
             val_dataset = EqualizerDataset(val_digital_waveforms, val_record_waveforms, val_speakers, return_dict=True, embedding_pool=EM_POOL, pool_size=POOL)
+            # num_val_samples = len(val_dataset)
+            # num_val_select = max(1, int(TUNE_RATIO * num_val_samples))
+            # val_subset, _ = random_split(val_dataset, [num_val_select, num_val_samples - num_val_select])
+            
+            print(len(train_dataset), len(val_dataset))
 
-            num_val_samples = len(val_dataset)
-            num_val_select = max(1, int(TUNE_RATIO * num_val_samples))
-            val_subset, _ = random_split(val_dataset, [num_val_select, num_val_samples - num_val_select])
-            print(num_select, num_val_select)
 
-            # test_dataset = EqualizerDataset(test_digital_waveforms, test_record_waveforms, test_speakers, return_dict=False, embedding_pool=True)
-
-            checkpoint_path = f"assets/v3/20_stage1_ALL_True_True_{TUNE_ONLY_Y}_30_/pytorch_model.bin"
+            checkpoint_path = "assets/v5/20_stage1_ALL_True_True_y3_30_y3_retrain_interspeech_model_with_all_new_data/checkpoint-21276/pytorch_model.bin"#f"assets/v3/20_stage1_ALL_True_True_{TUNE_ONLY_Y}_30_/pytorch_model.bin"
 
             model = StyleTransform2()
             state_dict = torch.load(checkpoint_path, map_location=GPU)
@@ -316,7 +342,7 @@ if __name__ == "__main__":
             model.to(GPU)
 
             training_args = TrainingArguments(
-                output_dir=f"assets/{DATA_VERSION}/{str(NUMS)}_stage{STAGE}_{DEVICES}_{EM_POOL}_{VLM_FILM}_{TRAIN_WITHOUT_Y}_{POOL}_TUNE_{TUNE_ONLY_Y}_{TUNE_RATIO}",
+                output_dir=f"assets/{DATA_VERSION}/{str(NUMS)}_stage{STAGE}_{DEVICES}_{EM_POOL}_{VLM_FILM}_{TRAIN_WITHOUT_Y}_{POOL}_TUNE_{TUNE_ONLY_Y}_{TUNE_RATIO}_GEN_{GEN}",
                 eval_strategy="epoch",
                 learning_rate=LEARNING_RATE,
                 save_strategy='epoch',
@@ -330,17 +356,17 @@ if __name__ == "__main__":
                 load_best_model_at_end=True,
                 save_total_limit=2,
                 save_safetensors=False,
-                eval_accumulation_steps=1,
+                # eval_accumulation_steps=1,
 
             )
             
             trainer = Trainer(
                 model=TrainerModelWrapper(model),
                 args=training_args,
-                train_dataset=train_subset,
-                eval_dataset=val_subset,
+                train_dataset=train_dataset,
+                eval_dataset=val_dataset,
                 compute_metrics=compute_metrics
             )
 
-            trainer.train() #resume_from_checkpoint
+            trainer.train()
     print("****************************** ENDING EXPERIMENT ******************************")

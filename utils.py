@@ -177,7 +177,6 @@ def inv_mel_spec(mel, out_filename, _stft, griffin_iters=60):
 def _pad_spec(fbank, target_length=1024):
     n_frames = fbank.shape[0]
     p = target_length - n_frames
-    # cut and pad
     if p > 0:
         m = torch.nn.ZeroPad2d((0, 0, 0, p))
         fbank = m(fbank)
@@ -210,8 +209,7 @@ def wav_to_fbank(filename, target_length=1024, fn_STFT=None):
     return fbank, log_magnitudes_stft, waveform
 
 
-def preprocess(digital_path, record_low_path, segment_length=5, stride_length=0.5, target_sampling_rate=44100, total_files=60, mono=False):
-    test_files = 5
+def preprocess(digital_path, record_low_path, segment_length=5, stride_length=0.5, target_sampling_rate=44100, total_files=60, mono=False, test_files=5):
     train_val_files = total_files - test_files
 
     train_end = int(0.8 * train_val_files)
