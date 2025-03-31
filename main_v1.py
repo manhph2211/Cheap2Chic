@@ -17,7 +17,7 @@ from torch.utils.data import random_split
 import math
 from datetime import datetime
 
-BATCH_SIZE = 8 # 2 A100 stage 1 bs=8 
+BATCH_SIZE = 4 # 2 A100 stage 1 bs=8 
 NUM_WORKERS = 8
 SHUFFLE = True
 SAMPLE_RATE = 44100
@@ -33,8 +33,8 @@ EPOCHS = 15
 DATA_VERSION = 'v5' 
 TEST_FILES = 5 
 
-STAGE = 1 ######## ********** ########
-NUMS = 15 ######## ********** ######## 10 15 20 30 40
+STAGE = 2 ######## ********** ########
+NUMS = 10 ######## ********** ######## 10 15 20 30 40 (add 25 35)
 
 N = 10
 MODEL_VERSION = 'v1'  
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # NOTE this is for Stage 2
     (train_digital_high_waveforms, train_record_high_waveforms), \
     (val_digital_high_waveforms, val_record_high_waveforms), \
-    (test_digital_high_waveforms, test_record_high_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/{DEVICES[1]}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, NUMS, MONO, TEST_FILES) # f"data/EN_y{STAGE}"
+    (test_digital_high_waveforms, test_record_high_waveforms) = preprocess(f"data/{DATA_VERSION}/x", f"data/{DATA_VERSION}/{DEVICES[1]}", SEGMENT_LENGTH, STRIDE_LENGTH, SAMPLE_RATE, 60, MONO, TEST_FILES) # f"data/EN_y{STAGE}"
 
     (train_digital_waveforms, val_digital_waveforms, test_digital_waveforms)  = (train_digital_low_waveforms, val_digital_low_waveforms, test_digital_low_waveforms) if STAGE == 1 else (train_digital_high_waveforms, val_digital_high_waveforms, test_digital_high_waveforms)
     (train_record_waveforms, val_record_waveforms, test_record_waveforms)  = (train_record_low_waveforms, val_record_low_waveforms, test_record_low_waveforms) if STAGE == 1 else (train_record_high_waveforms, val_record_high_waveforms, test_record_high_waveforms)
@@ -142,7 +142,8 @@ if __name__ == "__main__":
         init_model = DemucsEqualizer()
         model = TrainerModelWrapper(init_model, version=MODEL_VERSION)
     elif STAGE == 2:
-        model = TrainerModelWrapper(DoubleDemucsEqualizer("", model_name=MODEL_VERSION), version=MODEL_VERSION)
+        stage1_ckpt = f"assets/{DATA_VERSION}/curve/stage1/{str(NUMS)}_{DEVICES}/pytorch_model.bin"
+        model = TrainerModelWrapper(DoubleDemucsEqualizer(stage1_ckpt, model_name=MODEL_VERSION), version=MODEL_VERSION)
 
     trainer = Trainer(
         model=model,
@@ -151,5 +152,5 @@ if __name__ == "__main__":
         eval_dataset=val_dataset,
     )
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint="assets/v5/curve/stage2/10_['y3', 'y4']/checkpoint-32505")
     

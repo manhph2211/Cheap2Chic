@@ -24,7 +24,7 @@ class EqualizerDataset(Dataset):
         if self.speaker_list is not None and len(self.speaker_list) > 0:
             speaker = self.speaker_list[idx]
             if self.embedding_pool:
-                em_idx = random.randint(1, self.pool_size) if self.mode == "TRAIN" else random.randint(81, 100)
+                em_idx = random.randint(1, self.pool_size) if self.mode in ["TRAIN", "TUNE"] else random.randint(81, 100)
                 text_emb = torch.load(f"assets/embeddings/{speaker}/{speaker}_{em_idx}.pt", weights_only=True)[0].cpu()
             else:
                 text_emb = torch.load(f"assets/embeddings/{speaker}/{speaker}_1.pt", weights_only=True)[0].cpu()
