@@ -6,35 +6,6 @@ from tqdm import tqdm
 import random
 
 
-def gen(input_waveforms, target_waveforms, checkpoint_path='', gpu='cuda', batch_size=32, speaker=''):
-    print("############ START GENERATING DATA ###########")
-
-    model = StyleTransform2()
-    state_dict = torch.load(checkpoint_path, map_location=gpu)
-    state_dict = {k[6:]: v for k, v in state_dict.items()}
-    model.load_state_dict(state_dict)
-    model.eval()
-    model.to(gpu)
-
-    gen_waveforms = []
-    keep_samples = 3540 ############ UP TO HOW MUCH % TO FUNETUNE BEFORE GEN ############
-    num_samples = len(input_waveforms)
-    print("KEEP: ", keep_samples)
-    print("TOTAL: ", num_samples)
-
-    gen_waveforms.extend(target_waveforms[:keep_samples])    
-    for i in tqdm(range(3540, num_samples, batch_size)):
-        batch = torch.tensor(input_waveforms[i:i + batch_size]).to(gpu)
-        em_idxes =  [random.randint(1, 30) for _ in range(batch.shape[0])]
-        text_emb = [torch.load(f"assets/embeddings/{speaker}/{speaker}_{em_idx}.pt", weights_only=True)[0].detach().cpu().numpy() for em_idx in em_idxes]
-        em_batch = torch.tensor(text_emb).to(gpu)
-        with torch.no_grad():
-            output = model(batch, em_batch).squeeze(1).cpu().numpy()
-        gen_waveforms.extend(output)
-
-    return gen_waveforms
-
-
 class Pooler(nn.Module):
     def __init__(self, hidden_size=4):
         super().__init__()
@@ -158,3 +129,31 @@ class DoubleDemucsEqualizer(nn.Module):
         x = self.model1(x) if self.model_name=="v1" else self.model1(x, text_emd)
         return x
     
+    
+def gen(input_waveforms, target_waveforms, checkpoint_path='', gpu='cuda', batch_size=32, speaker='', keep_samples=None):
+    print("############ START GENERATING DATA ###########")
+
+    model = StyleTransform2()
+    state_dict = torch.load(checkpoint_path, map_location=gpu)
+    state_dict = {k[6:]: v for k, v in state_dict.items()}
+    model.load_state_dict(state_dict)
+    model.eval()
+    model.to(gpu)
+
+    gen_waveforms = []
+    num_samples = len(input_waveforms)
+    print("KEEP: ", keep_samples)
+    print("TOTAL: ", num_samples)
+
+    gen_waveforms.extend(target_waveforms[:keep_samples])    
+    for i in tqdm(range(keep_samples, num_samples, batch_size)):
+        batch = torch.tensor(input_waveforms[i:i + batch_size]).to(gpu)
+        em_idxes =  [random.randint(1, 30) for _ in range(batch.shape[0])]
+        text_emb = [torch.load(f"assets/embeddings/{speaker}/{speaker}_{em_idx}.pt", weights_only=True)[0].detach().cpu().numpy() for em_idx in em_idxes]
+        em_batch = torch.tensor(text_emb).to(gpu)
+        with torch.no_grad():
+            output = model(batch, em_batch).squeeze(1).cpu().numpy()
+        gen_waveforms.extend(output)
+
+    return gen_waveforms
+
