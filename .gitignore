@@ -7,7 +7,6 @@ wandb/
 *.sh
 *.out
 assets/logs/*
-assets
 data/v*/*
 *.txt
 pretrain*
