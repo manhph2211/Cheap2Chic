@@ -8,7 +8,6 @@ wandb/
 *.out
 assets/logs/*
 data/v*/*
-*.txt
 pretrain*
 *.npy
 trash/
