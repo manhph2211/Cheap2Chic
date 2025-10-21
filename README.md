@@ -1,6 +1,6 @@
 
 <div align="center" style="font-size: 5em;">
-  <strong>From Cheap to Chic: Enhancing Music Playback Quality of Budget Earphones via Hardware-Aware Learning (Sensys 2025)</strong>
+  <strong>From Cheap to Chic: Enhancing Music Playback Quality of Budget Earphones via Hardware-Aware Learning</strong>
   <br> </br> 
 </div>
 
