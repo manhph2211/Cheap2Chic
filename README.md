@@ -17,6 +17,12 @@
   <a href="" target="_blank">Rajesh&nbsp;Balan</a> &emsp;
   <a href="https://www.dongma.info/" target="_blank">Dong&nbsp;Ma</a> &emsp;
 </div>
+
+
+<div align="center" >
+  <small>* indicates equal contribution</small>
+</div>
+
 <br>
 
 <!-- <div align="center">
