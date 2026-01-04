@@ -18,12 +18,11 @@
   <a href="https://www.dongma.info/" target="_blank">Dong&nbsp;Ma</a> &emsp;
 </div>
 
+<br>
 
 <div align="center" >
   <small>* indicates equal contribution</small>
 </div>
-
-<br>
 
 <!-- <div align="center">
     <img src="" alt="Illustration of our technique"/>
