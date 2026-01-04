@@ -3,9 +3,8 @@
   <strong>From Cheap to Chic: Enhancing Music Playback Quality of Budget Earphones via Hardware-Aware Learning</strong>
   <br> </br> 
 </div>
-
 <div align="center"> 
-<a href="https://manhph2211.github.io/Cheap2Chic/"><img src="https://img.shields.io/badge/Website-Cheap2Chic WebPage-blue?style=for-the-badge"></a>
+<a href="https://contributor21.github.io/Cheap2Chic/"><img src="https://img.shields.io/badge/Website-Cheap2Chic WebPage-blue?style=for-the-badge"></a>
 <a href=""><img src="https://img.shields.io/badge/arxiv-Paper-red?style=for-the-badge"></a>
 <a href=""><img src="https://img.shields.io/badge/Checkpoint-%F0%9F%A4%97%20Hugging%20Face-White?style=for-the-badge"></a>
 </div>
