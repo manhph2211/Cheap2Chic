@@ -5,7 +5,7 @@
 </div>
 <div align="center"> 
 <a href="https://contributor21.github.io/Cheap2Chic/"><img src="https://img.shields.io/badge/Website-Cheap2Chic WebPage-blue?style=for-the-badge"></a>
-<a href=""><img src="https://img.shields.io/badge/arxiv-Paper-red?style=for-the-badge"></a>
+<a href="https://dl.acm.org/doi/10.1145/3774906.3800476"><img src="https://img.shields.io/badge/Sensys-Paper-red?style=for-the-badge"></a>
 <a href=""><img src="https://img.shields.io/badge/Checkpoint-%F0%9F%A4%97%20Hugging%20Face-White?style=for-the-badge"></a>
 </div>
 
